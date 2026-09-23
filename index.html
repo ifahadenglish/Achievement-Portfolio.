@@ -660,6 +660,10 @@
             .sec-head::after { display: none; }
             .back-to-top { inset-block-end: 16px; inset-inline-start: 16px; width: 44px; height: 44px; }
         }
+        /* ================= حالة تحميل المحتوى الديناميكي ================= */
+        [data-cms-pending] { animation: cmsPulse 1.2s ease-in-out infinite; }
+        @keyframes cmsPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
             .reveal { opacity: 1; transform: none; }
@@ -754,8 +758,8 @@
                         <p class="role" data-i18n="jobTitle">معلم متقدم – تخصص اللغة الإنجليزية</p>
                         <span class="badge" data-i18n="badge">🏆 حاصل على درجة 95 في التخصص</span>
                         <div class="quick-links">
-                            <a class="quick-link" href="mailto:iFahadenglish@gmail.com"><span>iFahadenglish@gmail.com</span><i class="fas fa-envelope"></i></a>
-                            <a class="quick-link" href="tel:+966554449824"><span>+966 55 444 9824</span><i class="fas fa-phone"></i></a>
+                            <a class="quick-link" data-cms-contact="email" href="mailto:iFahadenglish@gmail.com"><span data-cms-contact-text>iFahadenglish@gmail.com</span><i class="fas fa-envelope"></i></a>
+                            <a class="quick-link" data-cms-contact="phone" href="tel:+966554449824"><span data-cms-contact-text>+966 55 444 9824</span><i class="fas fa-phone"></i></a>
                         </div>
                     </div>
                     <div class="card bio-card reveal">
@@ -1125,19 +1129,19 @@
                         <p data-i18n="contactLead">يسعدني تواصلكم للتعاون أو الاستفسار عن الأعمال والبرامج التعليمية.</p>
                     </div>
                     <div class="contact-list">
-                        <a class="contact-item" href="mailto:iFahadenglish@gmail.com">
+                        <a class="contact-item" data-cms-contact="email" href="mailto:iFahadenglish@gmail.com">
                             <i class="fas fa-envelope ci"></i>
-                            <div><small data-i18n="emailLabel">البريد الإلكتروني</small><b>iFahadenglish@gmail.com</b></div>
+                            <div><small data-i18n="emailLabel">البريد الإلكتروني</small><b data-cms-contact-text>iFahadenglish@gmail.com</b></div>
                             <i class="fas fa-arrow-right go"></i>
                         </a>
-                        <a class="contact-item" href="tel:+966554449824">
+                        <a class="contact-item" data-cms-contact="phone" href="tel:+966554449824">
                             <i class="fas fa-phone ci"></i>
-                            <div><small data-i18n="phoneLabel">رقم الجوال</small><b>+966 55 444 9824</b></div>
+                            <div><small data-i18n="phoneLabel">رقم الجوال</small><b data-cms-contact-text>+966 55 444 9824</b></div>
                             <i class="fas fa-arrow-right go"></i>
                         </a>
-                        <a class="contact-item" href="https://wa.me/966554449824" target="_blank" rel="noopener">
+                        <a class="contact-item" data-cms-contact="whatsapp" href="https://wa.me/966554449824" target="_blank" rel="noopener">
                             <i class="fab fa-whatsapp ci"></i>
-                            <div><small data-i18n="whatsappLabel">واتساب</small><b>+966 55 444 9824</b></div>
+                            <div><small data-i18n="whatsappLabel">واتساب</small><b data-cms-contact-text>+966 55 444 9824</b></div>
                             <i class="fas fa-arrow-right go"></i>
                         </a>
                     </div>
@@ -1445,7 +1449,19 @@
             $('#langLabel').textContent = lang === 'ar' ? 'EN' : 'ع';
             renderCerts();
             updatePdfMeta();
+            for (const fn of applyHooks) { try { fn(lang); } catch (e) { console.error(e); } }
         }
+        /* ---------- منفذ ربط المحتوى الديناميكي (dist/site) ---------- */
+        // النصوص الثابتة أعلاه تبقى الافتراضية؛ هذا المنفذ يسمح فقط بتحديثها من قاعدة البيانات.
+        const applyHooks = [];
+        window.PortfolioSite = Object.freeze({
+            getLang: () => lang,
+            override(patch) {
+                for (const l of ['ar', 'en']) Object.assign(I18N[l], (patch && patch[l]) || {});
+                applyLang();
+            },
+            onApply(fn) { applyHooks.push(fn); fn(lang); }
+        });
         $('#langBtn').addEventListener('click', () => {
             lang = lang === 'ar' ? 'en' : 'ar';
             store.set('lang', lang);
@@ -1603,5 +1619,7 @@
         onScroll();
     })();
     </script>
+    <!-- ربط المحتوى بقاعدة البيانات (عند الفشل تبقى النصوص الثابتة أعلاه) -->
+    <script type="module" src="dist/site/main.js"></script>
 </body>
 </html>
