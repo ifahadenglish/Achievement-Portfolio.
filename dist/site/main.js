@@ -6,6 +6,7 @@
 import { createCms } from '../cms/index.js';
 import { getBridge } from './bridge.js';
 import { bindProfile } from './bindings/profile.js';
+import { bindAchievements, bindCourses, bindEvidence, bindExperiences, bindProjectsAndParticipations, bindRecommendations, bindStats, } from './bindings/sections.js';
 async function main() {
     const site = getBridge();
     if (!site)
@@ -27,8 +28,17 @@ async function main() {
         console.warn('[cms] invalid config — keeping static content', e);
         return;
     }
-    // Migrations enabled so far (one at a time):
-    await bindProfile(cms, site);
+    // Every section binds independently: one failing keeps only its own static content.
+    await Promise.all([
+        bindProfile(cms, site), // 1 profile + 2 photo
+        bindExperiences(cms, site),
+        bindAchievements(cms, site),
+        bindCourses(cms, site),
+        bindEvidence(cms, site),
+        bindProjectsAndParticipations(cms, site),
+        bindRecommendations(cms, site),
+        bindStats(cms, site),
+    ].map((p) => p.catch((e) => console.error('[cms]', e))));
 }
 void main();
 //# sourceMappingURL=main.js.map

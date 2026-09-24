@@ -2,7 +2,9 @@ import { TableClient } from './rest.js';
 const PUBLISHED = { column: 'is_published', op: 'eq', value: true };
 const BY_SORT = [{ column: 'sort_order' }, { column: 'created_at' }];
 const ATTACHMENTS = 'attachments:media_attachments(*,media:media(*))';
-const ATTACHMENT_ORDER = { column: 'sort_order', referencedTable: 'attachments' };
+/** Embedded child rows are sorted here (kept out of the query string on purpose). */
+const bySort = (rows) => (rows ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+const sortAttachments = (rows) => rows.map((r) => ({ ...r, attachments: bySort(r.attachments) }));
 export class PublicApi {
     t;
     constructor(http) {
@@ -65,12 +67,12 @@ export class PublicApi {
         const items = await this.listEvidence();
         return items.filter((e) => ids.includes(e.id));
     }
-    listAchievements() {
-        return this.t.achievements.list({
+    async listAchievements() {
+        return sortAttachments(await this.t.achievements.list({
             select: `*,${ATTACHMENTS}`,
             filters: [PUBLISHED],
-            order: [...BY_SORT, ATTACHMENT_ORDER],
-        });
+            order: BY_SORT,
+        }));
     }
     listCourses(category) {
         const filters = [PUBLISHED];
@@ -82,19 +84,20 @@ export class PublicApi {
             order: BY_SORT,
         });
     }
-    listProjects() {
-        return this.t.projects.list({
+    async listProjects() {
+        const rows = await this.t.projects.list({
             select: `*,cover:media!projects_cover_image_id_fkey(*),links:project_links(*),${ATTACHMENTS}`,
             filters: [PUBLISHED],
-            order: [...BY_SORT, ATTACHMENT_ORDER, { column: 'sort_order', referencedTable: 'links' }],
+            order: BY_SORT,
         });
+        return sortAttachments(rows).map((r) => ({ ...r, links: bySort(r.links) }));
     }
-    listParticipations() {
-        return this.t.participations.list({
+    async listParticipations() {
+        return sortAttachments(await this.t.participations.list({
             select: `*,${ATTACHMENTS}`,
             filters: [PUBLISHED],
-            order: [...BY_SORT, ATTACHMENT_ORDER],
-        });
+            order: BY_SORT,
+        }));
     }
     listRecommendations() {
         return this.t.recommendations.list({

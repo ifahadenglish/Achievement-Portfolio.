@@ -663,6 +663,8 @@
         /* ================= حالة تحميل المحتوى الديناميكي ================= */
         [data-cms-pending] { animation: cmsPulse 1.2s ease-in-out infinite; }
         @keyframes cmsPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+        .cms-empty { color: var(--muted, #6b7280); text-align: center; padding: 24px 12px; grid-column: 1 / -1; width: 100%; }
+        .avatar-ph img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -1423,6 +1425,7 @@
 
         /* ---------- الشهادات ---------- */
         function renderCerts() {
+            if (claimed.has('courses')) return; // يُعرض من قاعدة البيانات
             const t = I18N[lang];
             const card = c => `
                 <article class="card hoverable cert">
@@ -1454,8 +1457,11 @@
         /* ---------- منفذ ربط المحتوى الديناميكي (dist/site) ---------- */
         // النصوص الثابتة أعلاه تبقى الافتراضية؛ هذا المنفذ يسمح فقط بتحديثها من قاعدة البيانات.
         const applyHooks = [];
+        const claimed = new Set(); // أقسام صار يعرضها المحتوى الديناميكي
         window.PortfolioSite = Object.freeze({
             getLang: () => lang,
+            text: (key, l) => I18N[l || lang][key],
+            claim(section) { claimed.add(section); },
             override(patch) {
                 for (const l of ['ar', 'en']) Object.assign(I18N[l], (patch && patch[l]) || {});
                 applyLang();
@@ -1520,10 +1526,12 @@
         const counter = new IntersectionObserver(entries => {
             entries.forEach(e => {
                 if (!e.isIntersecting) return;
-                const el = e.target, end = +el.dataset.count, dur = 1400, t0 = performance.now();
+                const el = e.target, dur = 1400, t0 = performance.now();
                 (function tick(now) {
+                    // القيمة تُقرأ في كل إطار لأنها قد تُحدَّث من قاعدة البيانات أثناء العدّ
+                    const end = +el.dataset.count, suffix = el.dataset.suffix ?? '+';
                     const p = Math.min((now - t0) / dur, 1), eased = 1 - Math.pow(1 - p, 3);
-                    el.textContent = Math.round(end * eased) + '+';
+                    el.textContent = Math.round(end * eased) + suffix;
                     if (p < 1) requestAnimationFrame(tick);
                 })(t0);
                 counter.unobserve(el);
@@ -1549,6 +1557,7 @@
         /* ---------- شواهد الأداء (PDF) ---------- */
         const frame = $('#pdfFrame');
         function updatePdfMeta() {
+            if (claimed.has('evidence')) return;
             const t = I18N[lang];
             $('#pdfTitle').textContent = t['pdf' + activeTab + 'Title'];
             $('#pdfDesc').textContent = t['pdf' + activeTab + 'Desc'];
@@ -1556,6 +1565,7 @@
             $('#openPdf').href = `https://drive.google.com/file/d/${PDF_IDS[activeTab]}/view`;
         }
         function showPdf(id) {
+            if (claimed.has('evidence')) return;
             activeTab = id;
             $$('#pdfTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
             $$('iframe', frame).forEach(f => f.style.display = 'none');

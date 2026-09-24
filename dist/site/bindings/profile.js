@@ -45,6 +45,19 @@ function applyContacts(p) {
             text.textContent = value;
     }
 }
+/** Migration 2 — Photo: a published photo replaces the built-in one; none keeps it. */
+function applyPhoto(cms, p) {
+    const src = p.photo ? cms.storage.url(p.photo) : null;
+    if (!src)
+        return;
+    const alt = p.photo?.alt_ar || `صورة ${p.full_name_ar}`;
+    for (const img of document.querySelectorAll('.photo-ring img, .profile-avatar img')) {
+        if (img.getAttribute('src') !== src)
+            img.src = src;
+        img.alt = alt;
+    }
+    document.documentElement.setAttribute('data-cms-photo', 'live');
+}
 function boundElements() {
     const keys = Object.keys(KEYS).map((k) => `[data-i18n="${k}"]`).join(',');
     return [...document.querySelectorAll(keys), ...document.querySelectorAll('[data-cms-contact]')];
@@ -82,6 +95,7 @@ export async function bindProfile(cms, site) {
     });
     site.override(patch);
     applyContacts(p);
+    applyPhoto(cms, p);
     setState('profile', 'live');
 }
 //# sourceMappingURL=profile.js.map
